@@ -1,4 +1,5 @@
 const express = require('express')
+const app = express()
 const cors = require('cors')
 require('dotenv').config()
 const port = process.env.PORT || 5000;
@@ -25,20 +26,29 @@ async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
+
+        const postCollection = client.db("Forum").collection("posts");
+
+        //Post related api
+        app.get('/posts', async (req, res) => {
+            const result = await postCollection.find().toArray();
+            res.send(result)
+        })
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
-        await client.close();
+        //await client.close();
     }
 }
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-    res.send('Boss is sitting')
+    res.send('Forum is created')
 })
 
 app.listen(port, () => {
-    console.log(`Bistro Boss is sitting on port ${port}`)
+    console.log(`Example app listening on port ${port}`)
 })
