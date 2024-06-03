@@ -27,13 +27,39 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
+        const userCollection = client.db("Forum").collection("users");
         const postCollection = client.db("Forum").collection("posts");
 
         //Post related api
         app.get('/posts', async (req, res) => {
-            const result = await postCollection.find().toArray();
+            const filter = req.query;
+            const query = {
+                // post_title: { $regex: filter.search, $options: 'i' }
+            };
+            // const options = {
+            //     sort: {
+
+            //     }
+            // }
+            const result = await postCollection.find(query).toArray();
             res.send(result)
         })
+
+        //Users related api
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+
+            //insert email if user doesn't exist
+            const query = { email: user.email }
+            const existingUser = await userCollection.findOne(query)
+            if (existingUser) {
+                return res.send({ message: 'user already exist', insertedId: null })
+            }
+            const result = await userCollection.insertOne(user);
+            res.send(result)
+        })
+
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
