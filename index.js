@@ -3,6 +3,7 @@ const app = express()
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 //middleware
@@ -142,6 +143,54 @@ async function run() {
             const result = await announcementCollection.insertOne(item)
             res.send(result)
         })
+
+
+
+
+        //Payment Intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+
+        // stats or analytics
+        app.get('/admin-stats', async (req, res) => {
+            const users = await userCollection.estimatedDocumentCount();
+            const posts = await postCollection.estimatedDocumentCount();
+            // const orders = await paymentCollection.estimatedDocumentCount();
+
+            // const result = await paymentCollection.aggregate([
+            //   {
+            //     $group: {
+            //       _id: null,
+            //       totalRevenue: {
+            //         $sum: '$price'
+            //       }
+            //     }
+            //   }
+            // ]).toArray();
+
+            // const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+            res.send({
+                users,
+                posts
+            })
+        })
+
+
+
 
 
         // Send a ping to confirm a successful connection
