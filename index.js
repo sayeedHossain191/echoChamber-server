@@ -30,6 +30,7 @@ async function run() {
 
         const userCollection = client.db("Forum").collection("users");
         const postCollection = client.db("Forum").collection("posts");
+        const announcementCollection = client.db("Forum").collection("announcements");
 
 
 
@@ -135,6 +136,12 @@ async function run() {
 
 
 
+        //Announcement related api
+        app.post('/announcements', verifyToken, verifyAdmin, async (req, res) => {
+            const item = req.body;
+            const result = await announcementCollection.insertOne(item)
+            res.send(result)
+        })
 
 
         // Send a ping to confirm a successful connection
