@@ -42,6 +42,7 @@ async function run() {
         //await client.connect();
 
         const userCollection = client.db("Forum").collection("users");
+        const tagsCollection = client.db("Forum").collection("tags");
         const postCollection = client.db("Forum").collection("posts");
         const announcementCollection = client.db("Forum").collection("announcements");
 
@@ -85,6 +86,12 @@ async function run() {
             next();
         }
 
+        //Tags related api
+        app.get('/tags', async (req, res) => {
+            const cursor = tagsCollection.find();
+            const result = await cursor.toArray();
+            res.send(result)
+        })
 
 
         //Post related api
@@ -181,7 +188,11 @@ async function run() {
             res.send(result)
         })
 
-
+        app.get('/announcements', async (req, res) => {
+            const cursor = announcementCollection.find();
+            const result = await cursor.toArray();
+            res.send(result)
+        })
 
 
         // payment intent
