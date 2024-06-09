@@ -7,7 +7,6 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const port = process.env.PORT || 5000;
 
-
 //middleware
 app.use(cors())
 // app.use(
@@ -45,6 +44,7 @@ async function run() {
         const userCollection = client.db("Forum").collection("users");
         const tagsCollection = client.db("Forum").collection("tags");
         const postCollection = client.db("Forum").collection("posts");
+        const commentCollection = client.db("Forum").collection("comments");
         const announcementCollection = client.db("Forum").collection("announcements");
         const paymentCollection = client.db("Forum").collection("payments");
 
@@ -96,23 +96,29 @@ async function run() {
         })
 
 
-        /* 
-        db.collection.aggregate([
-{
-$addFields: {
-voteDifference: { $subtract: [“$upVote", “$downVote"] }
-}
-},
-{
-$sort: { voteDifference: -1 }
-}
-])
-        */
+        app.patch("/posts/upvote/:id", async (req, res) => {
+            try {
+                const { id } = req.params;
+                const document = await postCollection.findOne({ _id: new ObjectId(id) });
+                let currentUpvote = parseInt(document.upvote);
+
+                // Increment upvote by 1
+                currentUpvote++;
+
+                // Update upvote value in MongoDB
+                const result = await postCollection.updateOne({ _id: new ObjectId(id) }, { $set: { upvote: currentUpvote.toString() } });
+                res.send(result)
+
+            } catch (error) {
+                console.error("Error in fetching posts:", error);
+                res.status(500).send({ error: error.message });
+            }
+        })
 
         //Post related api
         app.get('/posts', async (req, res) => {
             try {
-                const { search, sort } = req.query;
+                const { search, sort, email } = req.query;
                 let pipeline = [];
 
                 // Match stage for search
@@ -124,6 +130,14 @@ $sort: { voteDifference: -1 }
                     });
                 }
 
+                // Match stage for email
+                if (email) {
+                    pipeline.push({
+                        $match: {
+                            "postMaker.postMaker_email": email
+                        }
+                    });
+                }
                 // Convert upvote and downvote to numbers, add fields, and sort
                 pipeline.push(
                     {
@@ -153,6 +167,22 @@ $sort: { voteDifference: -1 }
             const result = await postCollection.findOne(query)
             res.json(result)
         })
+
+
+        //Comment related api
+        app.post('/comments', async (req, res) => {
+            const newComment = req.body;
+            console.log(newComment);
+            const result = await commentCollection.insertOne(newComment);
+            res.send(result)
+        })
+
+        app.get('/comments', async (req, res) => {
+            //console.log(req.headers)
+            const result = await commentCollection.find().toArray();
+            res.send(result)
+        })
+
 
 
         //Add post
