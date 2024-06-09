@@ -9,17 +9,18 @@ const port = process.env.PORT || 5000;
 
 
 //middleware
-app.use(
-    cors({
-        origin: [
-            "http://localhost:5177",
-            "https://b9a12-forum-server.vercel.app",
-            "https://b9a12-forum-client.web.app",
-        ],
-        credentials: true,
-        optionSuccessStatus: 200,
-    })
-);
+app.use(cors())
+// app.use(
+//     cors({
+//         origin: [
+//             "http://localhost:5176",
+//             "https://b9a12-forum-server.vercel.app",
+//             "https://b9a12-forum-client.web.app",
+//         ],
+//         credentials: true,
+//         optionSuccessStatus: 200,
+//     })
+// );
 app.use(express.json());
 
 
@@ -45,6 +46,7 @@ async function run() {
         const tagsCollection = client.db("Forum").collection("tags");
         const postCollection = client.db("Forum").collection("posts");
         const announcementCollection = client.db("Forum").collection("announcements");
+        const paymentCollection = client.db("Forum").collection("payments");
 
 
 
@@ -94,18 +96,70 @@ async function run() {
         })
 
 
+        /* 
+        db.collection.aggregate([
+{
+$addFields: {
+voteDifference: { $subtract: [“$upVote", “$downVote"] }
+}
+},
+{
+$sort: { voteDifference: -1 }
+}
+])
+        */
+
         //Post related api
         app.get('/posts', async (req, res) => {
-            const filter = req.query;
-            const query = {
-                // post_title: { $regex: filter.search, $options: 'i' }
-            };
-            // const options = {
-            //     sort: {
+            try {
+                const { search, sort } = req.query;
+                let pipeline = [];
 
-            //     }
-            // }
-            const result = await postCollection.find(query).toArray();
+                // Match stage for search
+                if (search) {
+                    pipeline.push({
+                        $match: {
+                            post_title: { $regex: search, $options: 'i' }
+                        }
+                    });
+                }
+
+                // Convert upvote and downvote to numbers, add fields, and sort
+                pipeline.push(
+                    {
+                        $addFields: {
+                            voteDifference: { $subtract: [{ $toInt: "$upvote" }, { $toInt: "$downvote" }] }
+                        }
+                    },
+                    {
+                        $sort: { voteDifference: sort === 'asc' ? 1 : -1 }
+                    }
+                );
+
+                const result = await postCollection.aggregate(pipeline).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error("Error in fetching posts:", error);
+                res.status(500).send({ error });
+            }
+        });
+
+
+
+        //Post details
+        app.get('/posts/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await postCollection.findOne(query)
+            res.json(result)
+        })
+
+
+        //Add post
+        app.post('/posts', async (req, res) => {
+            const newPost = req.body;
+            console.log(newPost);
+            const result = await postCollection.insertOne(newPost);
             res.send(result)
         })
 
@@ -211,6 +265,15 @@ async function run() {
                 clientSecret: paymentIntent.client_secret
             })
         });
+
+
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const paymentResult = await paymentCollection.insertOne(payment);
+
+            console.log('payment info', payment);
+            res.send(paymentResult);
+        })
 
 
         // stats or analytics
