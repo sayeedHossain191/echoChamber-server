@@ -9,17 +9,6 @@ const port = process.env.PORT || 5000;
 
 //middleware
 app.use(cors())
-// app.use(
-//     cors({
-//         origin: [
-//             "http://localhost:5176",
-//             "https://b9a12-forum-server.vercel.app",
-//             "https://b9a12-forum-client.web.app",
-//         ],
-//         credentials: true,
-//         optionSuccessStatus: 200,
-//     })
-// );
 app.use(express.json());
 
 
@@ -47,6 +36,7 @@ async function run() {
         const commentCollection = client.db("Forum").collection("comments");
         const announcementCollection = client.db("Forum").collection("announcements");
         const paymentCollection = client.db("Forum").collection("payments");
+        const reportCollection = client.db("Forum").collection("reports");
 
 
 
@@ -95,7 +85,7 @@ async function run() {
             res.send(result)
         })
 
-
+        //Up Vote
         app.patch("/posts/upvote/:id", async (req, res) => {
             try {
                 const { id } = req.params;
@@ -169,6 +159,21 @@ async function run() {
         })
 
 
+        app.delete('/posts/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await postCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        app.get('/posts/:email', verifyToken, async (req, res) => {
+            const email = req.params.email
+            const query = { 'postMaker.postMaker_email': email }
+            const result = await postCollection.find(query).toArray()
+            res.send(result)
+        })
+
+
         //Comment related api
         app.post('/comments', async (req, res) => {
             const newComment = req.body;
@@ -180,6 +185,31 @@ async function run() {
         app.get('/comments', async (req, res) => {
             //console.log(req.headers)
             const result = await commentCollection.find().toArray();
+            res.send(result)
+        })
+
+
+        app.get('/comments', verifyToken, async (req, res) => {
+            const title = req.query.title;
+            const query = { title: title };
+            const result = await commentCollection.find(query).toArray()
+            res.send(result)
+        })
+
+
+
+
+        //Report related api
+        app.post('/reports', async (req, res) => {
+            const newReport = req.body;
+            console.log(newReport);
+            const result = await reportCollection.insertOne(newReport);
+            res.send(result)
+        })
+
+        app.get('/reports', async (req, res) => {
+            //console.log(req.headers)
+            const result = await reportCollection.find().toArray();
             res.send(result)
         })
 
@@ -310,6 +340,7 @@ async function run() {
         app.get('/admin-stats', async (req, res) => {
             const users = await userCollection.estimatedDocumentCount();
             const posts = await postCollection.estimatedDocumentCount();
+            const comments = await commentCollection.estimatedDocumentCount();
             // const orders = await paymentCollection.estimatedDocumentCount();
 
             // const result = await paymentCollection.aggregate([
@@ -327,7 +358,8 @@ async function run() {
 
             res.send({
                 users,
-                posts
+                posts,
+                comments
             })
         })
 
