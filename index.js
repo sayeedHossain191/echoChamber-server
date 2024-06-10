@@ -78,12 +78,25 @@ async function run() {
             next();
         }
 
+
+
         //Tags related api
         app.get('/tags', async (req, res) => {
             const cursor = tagsCollection.find();
             const result = await cursor.toArray();
             res.send(result)
         })
+
+
+        app.post('/tags', async (req, res) => {
+            const newTag = req.body;
+            console.log(newTag);
+            const result = await tagsCollection.insertOne(newReport);
+            res.send(result)
+        })
+
+
+
 
         //Up Vote
         app.patch("/posts/upvote/:id", async (req, res) => {
@@ -104,6 +117,32 @@ async function run() {
                 res.status(500).send({ error: error.message });
             }
         })
+
+
+
+        app.patch("/posts/downvote/:id", async (req, res) => {
+            try {
+                const { id } = req.params;
+                const document = await postCollection.findOne({ _id: new ObjectId(id) });
+                let currentDownvote = parseInt(document.downvote);
+
+                // Decrement downvote by 1
+                currentDownvote--;
+
+                // Update downvote value in MongoDB
+                const result = await postCollection.updateOne({ _id: new ObjectId(id) }, { $set: { downvote: currentDownvote.toString() } });
+                res.send(result)
+
+            } catch (error) {
+                console.error("Error in fetching posts:", error);
+                res.status(500).send({ error: error.message });
+            }
+        })
+
+
+
+
+
 
         //Post related api
         app.get('/posts', async (req, res) => {
@@ -212,6 +251,16 @@ async function run() {
             const result = await reportCollection.find().toArray();
             res.send(result)
         })
+
+
+        app.delete('/reports/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await reportCollection.deleteOne(query)
+            res.send(result)
+        })
+
+
 
 
 
@@ -333,6 +382,12 @@ async function run() {
 
             console.log('payment info', payment);
             res.send(paymentResult);
+        })
+
+        app.get('/payments', async (req, res) => {
+            const cursor = paymentCollection.find();
+            const result = await cursor.toArray();
+            res.send(result)
         })
 
 
